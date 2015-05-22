@@ -187,7 +187,7 @@ class Wave(object):
 
 # ------------
 # Make 1-2 waves depending on current axes accelerometer sample!
-def align(axes):
+def align(axes, rollWave, pitchWave):
     """
     :param axes: x,y,z of current sampled accelerometer axis
     :return:
@@ -212,15 +212,15 @@ def align(axes):
 
     # now calculate which wave type this should be.
     if not (-roll_threshold < Roll < roll_threshold):
-        if ((Roll > (lastRollWave + waveAngleIncrement)) or (Roll < (lastRollWave - waveAngleIncrement))):
-            lastRollWave = Roll
+        if ((Roll > (rollWave + waveAngleIncrement)) or (Roll < (rollWave - waveAngleIncrement))):
+            rollWave = Roll
             if (0 < Roll < math.pi):
                 retWaves.append(Wave("TTB", Magnitude / MaxMagnitude))
             elif (-math.pi < Roll < 0):
                 retWaves.append(Wave("BTT", Magnitude / MaxMagnitude))
 
-        if ((Pitch > (lastPitchWave + waveAngleIncrement)) or (Pitch < (lastPitchWave - waveAngleIncrement))):
-            lastPitchWave = Pitch
+        if ((Pitch > (pitchWave + waveAngleIncrement)) or (Pitch < (pitchWave - waveAngleIncrement))):
+            pitchWave = Pitch
     if not (-pitch_threshold < Pitch < pitch_threshold):
         if (0 < Pitch < math.pi):
             retWaves.append(Wave("RTL", Magnitude / MaxMagnitude))
@@ -579,7 +579,7 @@ while True:
             accel_axes = sample_accel_FAKE(accel_axes)
 
         new_Waves = []
-        new_Waves = align(accel_axes)
+        new_Waves = align(accel_axes,lastRollWave, lastPitchWave)
 
         for newWave in new_Waves:
             waveIndex += 1
