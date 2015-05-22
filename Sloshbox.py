@@ -36,7 +36,7 @@ default_fps = 60
 timeScale = 0.6
 drainAmount = 0.1
 # amount to drain from each array square per tick.
-wave_spawn_period = 0.2
+wave_spawn_period = 0.1
 g_tolerance = 4
 
 color_white = (255,255,255)
@@ -63,7 +63,7 @@ lastRollWave = 0
 lastPitchWave = 0
 
 # increment by which angle must change from previous amount to generate a new wave (in radians)
-waveAngleIncrement = 0.17
+waveAngleIncrement = 0.01
 
 class Wave(object):
     """
@@ -212,20 +212,20 @@ def align(axes, rollWave, pitchWave):
 
     # now calculate which wave type this should be.
     if not (-roll_threshold < Roll < roll_threshold):
-        if ((Roll > (rollWave + waveAngleIncrement)) or (Roll < (rollWave - waveAngleIncrement))):
+        if not ((rollWave - waveAngleIncrement) < Roll < (rollWave + waveAngleIncrement)):
             rollWave = Roll
             if (0 < Roll < math.pi):
                 retWaves.append(Wave("TTB", Magnitude / MaxMagnitude))
             elif (-math.pi < Roll < 0):
                 retWaves.append(Wave("BTT", Magnitude / MaxMagnitude))
 
-        if ((Pitch > (pitchWave + waveAngleIncrement)) or (Pitch < (pitchWave - waveAngleIncrement))):
-            pitchWave = Pitch
     if not (-pitch_threshold < Pitch < pitch_threshold):
-        if (0 < Pitch < math.pi):
-            retWaves.append(Wave("RTL", Magnitude / MaxMagnitude))
-        elif (-math.pi < Pitch < 0):
-            retWaves.append(Wave("LTR", Magnitude / MaxMagnitude))
+        if not ((pitchWave - waveAngleIncrement) < Pitch < (pitchWave + waveAngleIncrement)):
+            pitchWave = Pitch
+            if (0 < Pitch < math.pi):
+                retWaves.append(Wave("RTL", Magnitude / MaxMagnitude))
+            elif (-math.pi < Pitch < 0):
+                retWaves.append(Wave("LTR", Magnitude / MaxMagnitude))
 
     return retWaves
 
