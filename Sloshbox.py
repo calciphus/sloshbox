@@ -55,8 +55,8 @@ updateSpeed_min = 0.1
 updateSpeed_max = 1
 
 # threshold from flat at which roll/pitch changes are ignored (i.e. rest state)
-roll_threshold = math.pi / 12
-pitch_threshold = math.pi / 12
+roll_threshold = math.pi / 36
+pitch_threshold = math.pi / 36
 
 # last angle at which we generated a wave
 lastRollWave = 0
@@ -199,9 +199,10 @@ def align(axes, rollWave, pitchWave):
     retWaves = []
     # http://stackoverflow.com/questions/3755059/3d-accelerometer-calculate-the-orientation
     # math.atan2(y, x) The result is between -pi and pi.
+    # NOTE: formerly switch pitch and roll! Our sensor was wired... strangely.
 
-    Roll = math.atan2(y, z * 180/math.pi)
-    Pitch = math.atan2(-x, math.sqrt(y * y + z * z) * 180/math.pi)
+    Pitch = math.atan2(y, z * 180/math.pi)
+    Roll = math.atan2(-x, math.sqrt(y * y + z * z) * 180/math.pi)
     Magnitude = GetMagnitude(axes)
     MaxMagnitude = GetMagnitude({"x":g_tolerance, "y":g_tolerance, "z":g_tolerance})
 
@@ -211,20 +212,20 @@ def align(axes, rollWave, pitchWave):
     print "MaxMagnitude", MaxMagnitude
 
     # now calculate which wave type this should be.
-    if not (-roll_threshold < Roll < roll_threshold):
-        if not ((rollWave - waveAngleIncrement) < Roll < (rollWave + waveAngleIncrement)):
+    if not (-roll_threshold <= Roll <= roll_threshold):
+        if not ((rollWave - waveAngleIncrement) <= Roll <= (rollWave + waveAngleIncrement)):
             rollWave = Roll
-            if (0 < Roll < math.pi):
+            if (0 <= Roll <= math.pi):
                 retWaves.append(Wave("TTB", Magnitude / MaxMagnitude))
-            elif (-math.pi < Roll < 0):
+            elif (-math.pi <= Roll <= 0):
                 retWaves.append(Wave("BTT", Magnitude / MaxMagnitude))
 
-    if not (-pitch_threshold < Pitch < pitch_threshold):
-        if not ((pitchWave - waveAngleIncrement) < Pitch < (pitchWave + waveAngleIncrement)):
+    if not (-pitch_threshold <= Pitch <= pitch_threshold):
+        if not ((pitchWave - waveAngleIncrement) <= Pitch <= (pitchWave + waveAngleIncrement)):
             pitchWave = Pitch
-            if (0 < Pitch < math.pi):
+            if (0 <= Pitch <= math.pi):
                 retWaves.append(Wave("RTL", Magnitude / MaxMagnitude))
-            elif (-math.pi < Pitch < 0):
+            elif (-math.pi <= Pitch <= 0):
                 retWaves.append(Wave("LTR", Magnitude / MaxMagnitude))
 
     return retWaves
