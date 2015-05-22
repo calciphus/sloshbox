@@ -55,8 +55,8 @@ updateSpeed_min = 0.1
 updateSpeed_max = 1
 
 # threshold from flat at which roll/pitch changes are ignored (i.e. rest state)
-roll_threshold = 0.001
-pitch_threshold = 0.001
+roll_threshold = 0.0015
+pitch_threshold = 0.0015
 
 # increment by which angle must change from previous amount to generate a new wave (in radians)
 waveAngleIncrement = 0.0015
