@@ -57,6 +57,7 @@ class Wave(object):
 
     def __init__(self, wave_type = "LTR", speed =1.0, lifetime=100, color=(255,255,255)):
         self.name = "Wave-" + str(waveIndex)
+        self.wave_type = "<UNKNOWN>"
         self.SetWaveType(wave_type, True)
         self.speed = speed
         self.lifetime = lifetime
@@ -75,6 +76,7 @@ class Wave(object):
         self.x2 += self.x_velocity
         self.y1 += self.y_velocity
         self.y2 += self.y_velocity
+        self.CheckWaveConstraints()
 
     def CheckWaveConstraints(self):
         if self.x1 > LED_xsize and self.x2 > LED_xsize:
@@ -83,19 +85,19 @@ class Wave(object):
             self.delete_flag = True
         if self.y1 > LED_ysize and self.y2 > LED_ysize:
             self.delete_flag = True
-        if self.y1 < 0 and self.y2 > 0:
+        if self.y1 < 0 and self.y2 < 0:
             self.delete_flag = True
 
     def SetWaveType(self, toset = "LTR", resetcoords = False):
         for case in switch_case.switch(toset):
             if case("LTR"):
-                # wave traveling Right to Left
+                # wave traveling Left to Right
                 self.wave_type = toset
                 if resetcoords:
                     self.x1 = -1
                     self.y1 = -1
                     self.x2 = -1
-                    self.y2 = LED_ysize - 1
+                    self.y2 = LED_ysize
 
                 self.x_velocity = 1.0
                 self.y_velocity = 0.0
@@ -103,18 +105,20 @@ class Wave(object):
 
             if case("RTL"):
                 # wave traveling Right to Left
+                self.wave_type = toset
                 if resetcoords:
                     self.x1 = LED_xsize
                     self.y1 = -1
                     self.x2 = LED_xsize
-                    self.y2 = LED_ysize - 1
+                    self.y2 = LED_ysize
 
                 self.x_velocity = -1.0
                 self.y_velocity = 0.0
                 break
 
             if case("TTB"):
-                # nothing yet!
+                # wave traveling Top to Bottom
+                self.wave_type = toset
                 if resetcoords:
                     self.x1 = -1
                     self.y1 = -1
@@ -126,24 +130,25 @@ class Wave(object):
                 break
 
             if case("BTT"):
-                # nothing yet!
+                # wave traveling Bottom to Top
+                self.wave_type = toset
                 if resetcoords:
                     self.x1 = -1
-                    self.y1 = LED_ysize -1
+                    self.y1 = LED_ysize
                     self.x2 = LED_xsize
-                    self.y2 = LED_ysize -1
+                    self.y2 = LED_ysize
 
                 self.x_velocity = 0.0
                 self.y_velocity = -1.0
                 break
 
             if case():
-                self.wave_type = "<UNKNOWN>"
+                self.wave_type = "<unknown>"
                 if resetcoords:
                     self.x1 = -1
                     self.y1 = -1
                     self.x2 = -1
-                    self.y2 = LED_ysize - 1
+                    self.y2 = LED_ysize
 
                 self.x_velocity = 1.0
                 self.y_velocity = 0.0
@@ -173,27 +178,27 @@ def align(axes):
     print "Pitch: ", Pitch
 
     # now calculate which wave type this should be.
-    radRoll = math.degrees(Roll)
-    radPitch = math.degrees(Pitch)
+    radRoll = Roll
+    radPitch = Pitch
 
-    if (0 < radRoll < 180):
-        retWaves.append(Wave("BTT"))
-    elif (180 < radRoll < 360):
-        retWaves.append(Wave("TTB"))
-    if (0 < radPitch < 180):
-        retWaves.append(Wave("RTL"))
-    elif (180 < radPitch < 360):
-        retWaves.append(Wave("LTR"))
+    if (0 < radRoll < math.pi):
+        retWaves.append(Wave("BTT", True))
+    elif (-math.pi < radRoll < 0):
+        retWaves.append(Wave("TTB", True))
+
+    if (0 < radPitch < math.pi):
+        retWaves.append(Wave("RTL", True))
+    elif (-math.pi < radPitch < 0):
+        retWaves.append(Wave("LTR", True))
 
     return retWaves
 
 #-------------------------------------------------------------------------------
 # command line
 
-default_layout = "openpixelcontrol/layouts/fadecandy8x8.json"
-#default_server = "localhost:7890"
-default_server = "192.168.0.118:7890"
-
+default_layout = "openpixelcontrol/layouts/fadecandy8x8x2.json"
+default_server = "localhost:7890"
+#default_server = "192.168.0.118:7890"
 #default_server = "127.0.0.1:7890"
 
 #-------------------------------------------------------------------------------
@@ -240,7 +245,7 @@ for item in json.load(open(options.layout)):
 
 # use layout "fadecandy8x8.json"
 # Fadecandy 8x8 board
-LED_xsize = 8
+LED_xsize = 16
 LED_ysize = 8
 numLEDs = LED_xsize * LED_ysize
 
@@ -468,9 +473,9 @@ while True:
         for newWave in new_Waves:
             waveIndex += 1
             waveList.append(newWave)
+            print 'New Wave(t={0:.4f}) Type: {1}'.format(newWave.createdAt, newWave.wave_type)
 
         LastWaveCreatedAt = time.time()
-        print '    New Wave(t=%f)' % LastWaveCreatedAt
         wave_spawn_timer = 0.0
 
     for wave in waveList:
