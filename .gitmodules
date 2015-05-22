@@ -1,0 +1,6 @@
+[submodule "fadecandy"]
+	path = fadecandy
+	url = https://github.com/scanlime/fadecandy.git
+[submodule "adxl345-python"]
+	path = adxl345-python
+	url = https://github.com/pimoroni/adxl345-python.git
