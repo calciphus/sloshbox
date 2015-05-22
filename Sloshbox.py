@@ -10,7 +10,7 @@ from __future__ import division
 # adxl345 library can't import smbus unless in a Linux environment
 # this flag tells the code to fake accelerometer data.
 # look for it and uncomment appropriate lines when deploying to RPI
-RUNNINGONRPI=True
+RUNNINGONRPI = True
 
 import time
 import sys
@@ -23,6 +23,7 @@ import math
 
 if RUNNINGONRPI:
     import adxl345
+    print
 
 try:
     import json
@@ -33,20 +34,25 @@ except ImportError:
 # Visualization Tweak Values!
 default_fps = 60
 timeScale = 0.6
-drainAmount = 0.1 # amount to drain from each array square per tick.
+drainAmount = 0.1
+# amount to drain from each array square per tick.
 wave_spawn_period = 0.2
 g_tolerance = 4
 
-color_black = (0,0,0)
 color_white = (255,255,255)
-color_01 = (250,250,255)
-color_02 = (128,128,255)
-color_03 = (64,64,128)
-color_04 = (32,32,64)
+color_01 = (60, 43, 212) # 3C2BD4, primary wedding color
+color_02 = (39,28,138)
+color_03 = (25,18,90)
+color_04 = (12,9,43)
+color_black = (0,0,0)
 
 waveIndex = 0
 accel_wobble = True
 wobble_speed = 0.1
+
+# Maximum magnitude = min speed, and vice versa
+updateSpeed_min = 0.1
+updateSpeed_max = 1
 
 class Wave(object):
     """
@@ -55,16 +61,15 @@ class Wave(object):
     # LTR, RTL, TTB, BTT UL_DR, UR_DL, DL_UR, DR_UL
     """
 
-    def __init__(self, wave_type = "LTR", speed =1.0, lifetime=100, color=(255,255,255)):
+    def __init__(self, wave_type = "LTR", speed = 1.0):
         self.name = "Wave-" + str(waveIndex)
         self.wave_type = "<UNKNOWN>"
         self.SetWaveType(wave_type, True)
         self.speed = speed
-        self.lifetime = lifetime
-        self.update_timer = 0 # immediate
-        self.color = color
+        self.update_period = self.CalcUpdatePeriod(self.speed);
         self.delete_flag = False
         self.createdAt = time.time()
+        self.last_update = self.createdAt #immediate
 
     def update(self):
         """
@@ -154,6 +159,21 @@ class Wave(object):
                 self.y_velocity = 0.0
                 break
 
+    def TimerUpdate(self):
+        # if wave timer is reached, check accelerometer and spawn a new wave.
+        if ((time.time() - self.last_update) >= self.update_period):
+            self.last_update = time.time()
+            self.update()
+
+    def CalcUpdatePeriod(self, speed):
+        """
+        # returns an update period for this wave based on speed
+        # speed is based on magnitude at time of spawn / max magnitude
+        # speed = 1.0 is fastest. speed = 0.0 is slowest
+        """
+        speed = clamp(0,speed,1.0)
+        self.update_period = (updateSpeed_max - (pytweening.linear(speed) * (updateSpeed_max-updateSpeed_min)))
+
 # ------------
 # Make 1-2 waves depending on current axes accelerometer sample!
 def align(axes):
@@ -161,35 +181,37 @@ def align(axes):
     :param axes: x,y,z of current sampled accelerometer axis
     :return:
     """
-    x,y,z = axes
+    x = axes['x']
+    y = axes['y']
+    z = axes['z']
+
     retWaves = []
     # http://stackoverflow.com/questions/3755059/3d-accelerometer-calculate-the-orientation
-
-    # roll 0-180 = btt
-    # roll 180 - 360 = ttb
-
-    # pitch 0-180 = RTL
-    # pitch 180-360 = LTR
+    # math.atan2(y, x) The result is between -pi and pi.
 
     Roll = math.atan2(y, z * 180/math.pi)
     Pitch = math.atan2(-x, math.sqrt(y * y + z * z) * 180/math.pi)
+    Magnitude = GetMagnitude(axes)
+    MaxMagnitude = GetMagnitude({"x":g_tolerance, "y":g_tolerance, "z":g_tolerance})
 
     print "Roll: ", Roll
     print "Pitch: ", Pitch
+    print "Magnitude: ", Magnitude
+    print "MaxMagnitude", MaxMagnitude
 
     # now calculate which wave type this should be.
     radRoll = Roll
     radPitch = Pitch
 
     if (0 < radRoll < math.pi):
-        retWaves.append(Wave("BTT", True))
+        retWaves.append(Wave("TTB", Magnitude / MaxMagnitude))
     elif (-math.pi < radRoll < 0):
-        retWaves.append(Wave("TTB", True))
+        retWaves.append(Wave("BTT", Magnitude / MaxMagnitude))
 
     if (0 < radPitch < math.pi):
-        retWaves.append(Wave("RTL", True))
+        retWaves.append(Wave("RTL", Magnitude / MaxMagnitude))
     elif (-math.pi < radPitch < 0):
-        retWaves.append(Wave("LTR", True))
+        retWaves.append(Wave("LTR", Magnitude / MaxMagnitude))
 
     return retWaves
 
@@ -197,9 +219,11 @@ def align(axes):
 # command line
 
 default_layout = "layouts/fadecandy8x8x2.json"
-default_server = "localhost:7890"
-#default_server = "192.168.0.118:7890"
-#default_server = "127.0.0.1:7890"
+if RUNNINGONRPI:
+    default_server = "localhost:7890"
+else:
+    default_server = "localhost:7890"
+    # default_server = "192.168.0.118:7890"
 
 #-------------------------------------------------------------------------------
 # command line
@@ -254,7 +278,7 @@ white = [ (255,255,255) ] * numLEDs
 
 # The normalArray is a list of floats from 0.0 -> 1.0 that indicates relative pixel 'fullness'
 # this array gets translated to the PixelArray for passing to the OPC client.
-normalArray = [[0.0 for y in xrange(LED_ysize)] for x in xrange(LED_xsize)]
+normalArray = [[0.0 for x in range(LED_xsize)] for y in range(LED_ysize)]
 
 
 #-------------------------------------------------------------------------------
@@ -303,25 +327,18 @@ def pixel_color(t, coord, ii):
 
 #-------------------------------------------------------------------------------
 # Drain the normals of each element in handleArray by amount, clamp to 0
-
 def drainNormals(amount):
     # Now find its dimensions
     rows = len(normalArray)
     cols = len(normalArray[0])
 
-    # And now loop over every element
-    # Here, we'll add one to each element,
-    # just to make a change we can easily see
-    for row in xrange(rows):
-        for col in xrange(cols):
-            # This code will be run rows*cols times, once for each
-            # element in the 2d list
+    # loop over every element
+    for row in range(rows):
+        for col in range(cols):
             tmp = normalArray[row][col] - amount
             if tmp < 0:
                 tmp = 0
             normalArray[row][col] = tmp
-
-    return
 
 #-------------------------------------------------------------------------------
 # Make a pixel array from coordinate set
@@ -330,24 +347,93 @@ def make_pixelarray(coordinates, t):
     pixel_array = [pixel_color(t * timeScale, coord, ii) for ii, coord in enumerate(coordinates)]
     return pixel_array
 
+    FadeCandyList = []
+    nextFadeCandyID = 0
+
+class FadeCandy(object):
+    """
+    Define a single Fadecandy board virtual object for mapping from pixelarray.
+    """
+    def __init__(self, x=0, y=0, id=0):
+        self.ID = id
+
+        self.x = x
+        self.y = y
+        self.xsize = 8
+        self.ysize = 8
+        self.array = [[0 for y in range(self.ysize)] for x in range(self.xsize)]
+
+    def Map(self, targetArray):
+        """
+        copies pixels from the targetArray into self array
+        :param targetArray:
+        :return:
+        """
+        # print "Map: ({0}, {1}) -> {2}, {3}".format(len(targetArray), len(targetArray[0]), self.x, self.y)
+
+        for ii in range(self.ysize):
+            #row
+            for jj in range(self.xsize):
+                #col
+                # print "Mapping: target({0},{1})={2} -> self({3},{4})".format(self.y+ii, self.x+jj, targetArray[self.y+ii][self.x+jj], ii, jj)
+                if ((self.y + ii) < len(targetArray)):
+                    if ((self.x + jj) < len(targetArray[0])):
+                        self.array[ii][jj] = targetArray[(self.y + ii)][(self.x + jj)]
+                    else:
+                        # mapped coordinates are outside targetarray
+                        self.array[ii][jj] = color_white
+                else:
+                    # mapped coordinates are outside targetarray
+                    self.array[ii][jj] = color_white
+
+    def serialize(self):
+        retlist = []
+
+        for i in range(len(self.array)):
+            for j in range(len(self.array[i])):
+                retlist.append(self.array[i][j])
+
+        return retlist
+
+FadeCandyList = []
+nextFadeCandyID = 0
+FadeCandyList.append(FadeCandy(0,0, nextFadeCandyID))
+
+nextFadeCandyID += 1
+FadeCandyList.append(FadeCandy(8,0, nextFadeCandyID))
+
 #-------------------------------------------------------------------------------
 # Make a pixel array from normals, corresponding to coordinate set
 def convert2dListToPixels(passArray):
-    retarray = []
-    for row in passArray:
-        for column in row:
-            tmp = convertNormalToPixel(column)
-            retarray.append(tmp)
+    # print "Converting: passArray[{0}][{1}]".format(LED_ysize, LED_xsize)
+    # copy passed array for returning values.
+    retArray = [[(0,0,0) for x in range(LED_xsize)] for y in range(LED_ysize)]
+    # print "RetArray:", retArray
+    # iterate over each element in passArray, convert its value to pixel color and store in retArray
+    for row in range(len(passArray)):
+        for column in range(len(passArray[row])):
+            tmp = convertNormalToPixel(passArray[row][column])
+            retArray[row][column] = tmp
 
-    return retarray
+    return retArray
 
 #-------------------------------------------------------------------------------
 # Make a pixel array from normals, corresponding to coordinate set
 
 def make_pixelarray_from_normals(coordinates):
-    # pixel_array = [convertNormalToPixel(getNormalFor(coord)) for ii, coord in enumerate(coordinates)]
+    # convert our list of normal values into an equivalent list of pixel colors
     pixel_array = convert2dListToPixels(normalArray)
-    return pixel_array
+
+    serialized_array = []
+
+    # map our fadecandy boards to the pixel array
+    for fc in FadeCandyList:
+        fc.Map(pixel_array)
+        for pixel in fc.serialize():
+            serialized_array.append(pixel)
+
+    # print "SA len(%i)=" % len(serialized_array), serialized_array
+    return serialized_array
 
 #-------------------------------------------------------------------------------
 # For each point in a line, set corresponding point in normalArray to 1.0
@@ -359,7 +445,7 @@ def applyNormalPoints(line):
         y = clamp(0,y,LED_ysize-1)
         x = int(x)
         y = int(y)
-        normalArray[x][y] = 1.0
+        normalArray[y][x] = 1.0
 
 #-------------------------------------------------------------------------------
 # Convert a normal value to a pixel color
@@ -368,9 +454,9 @@ def convertNormalToPixel(norm):
 
     if norm == 1.0:
         rgb = color_white
-    elif norm > 0.9:
-        rgb = color_01
     elif norm > 0.8:
+        rgb = color_01
+    elif norm > 0.6:
         rgb = color_02
     elif norm > 0.4:
         rgb = color_03
@@ -383,7 +469,7 @@ def convertNormalToPixel(norm):
 
 def getNormalFor(coord):
     x,y,z = coord
-    norm = normalArray[x][y]
+    norm = normalArray[y][x]
     return norm
 
 #-------------------------------------------------------------------------------
@@ -404,15 +490,14 @@ def randomColor():
 # Merely PRETEND to sample accelerometer and return XYZ values
 def sample_accel_FAKE(prev_accel):
     if accel_wobble == True:
-        x = clamp(-12, prev_accel[0]+random.uniform(-0.5,0.5), 12)
-        y = clamp(-12, prev_accel[1]+random.uniform(-0.5,0.5), 12)
-        z = clamp(-12, prev_accel[2]+random.uniform(-0.5,0.5), 12)
+        x = clamp(-12, prev_accel['x']+random.uniform(-0.5,0.5), 12)
+        y = clamp(-12, prev_accel['y']+random.uniform(-0.5,0.5), 12)
+        z = clamp(-12, prev_accel['z']+random.uniform(-0.5,0.5), 12)
     else:
-        x = clamp(-12, prev_accel[0] + wobble_speed*2, 12)
-        y = clamp(-12, prev_accel[0] + wobble_speed, 12)
-        z = clamp(-12, prev_accel[0] + wobble_speed, 12)
-    accel_xyz = [ x, y, z]
-    accel_xyz = tuple(accel_xyz)
+        x = clamp(-12, prev_accel['x'] + wobble_speed*2, 12)
+        y = clamp(-12, prev_accel['y'] + wobble_speed, 12)
+        z = clamp(-12, prev_accel['z'] + wobble_speed, 12)
+    accel_xyz = {"x": x,"y": y, "z": z}
     return accel_xyz
 
 def clamp(minimum, x, maximum):
@@ -421,20 +506,31 @@ def clamp(minimum, x, maximum):
 #-------------------------------------------------------------------------------
 # Sample accelerometer and return XYZ values
 def sample_accel():
-    accel_axes = [0,0,0]
+    accel_axes = {"x": 0, "y": 0, "z": 0}
     if RUNNINGONRPI:
         axes = accelerometer.getAxes(True)
         print "ADXL345 on address 0x%x:" % (accelerometer.address)
         print "   x = %.3fG" % ( axes['x'] )
         print "   y = %.3fG" % ( axes['y'] )
         print "   z = %.3fG" % ( axes['z'] )
-        accel_axes = tuple(axes['x'], axes['y'], axes['z'])
+        accel_axes = {axes['x'], axes['y'], axes['z']}
         print
     else:
         accel_axes = sample_accel_FAKE(accel_axes )
 
     return accel_axes
 
+def GetUnitVector(axes):
+    magnitude = GetMagnitude(axes)
+    unit_axes = {"x": axes['x'] / magnitude, "y": axes['y']/ magnitude, "z": axes['z'] / magnitude}
+    return unit_axes
+
+def GetMagnitude(axes):
+    x = (axes['x'])
+    y = (axes['y'])
+    z = (axes['z'])
+    magnitude  = math.sqrt(math.pow(x,2) + math.pow(y,2) + math.pow(z,2))
+    return magnitude
 
 #-------------------------------------------------------------------------------
 # core pixel loop
@@ -452,7 +548,7 @@ start_time = time.time()
 wave_spawn_timer = 0.0
 LastWaveCreatedAt = start_time
 waveList =[Wave()]
-accel_axes = sample_accel_FAKE([0, 0, 0])
+accel_axes = sample_accel_FAKE({"x": 0, "y": 0, "z": 0})
 
 while True:
     # update time since loop began
@@ -464,6 +560,7 @@ while True:
     if wave_spawn_timer >= wave_spawn_period:
         if RUNNINGONRPI:
             accel_axes = sample_accel()
+            print
         else:
             accel_axes = sample_accel_FAKE(accel_axes)
 
@@ -479,7 +576,7 @@ while True:
         wave_spawn_timer = 0.0
 
     for wave in waveList:
-        wave.update()
+        wave.TimerUpdate()
         if wave.delete_flag:
             print "Removing Wave: %s" % wave.name
             waveList.remove(wave)
