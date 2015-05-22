@@ -10,7 +10,7 @@ from __future__ import division
 # adxl345 library can't import smbus unless in a Linux environment
 # this flag tells the code to fake accelerometer data.
 # look for it and uncomment appropriate lines when deploying to RPI
-RUNNINGONRPI=False
+RUNNINGONRPI=True
 
 import time
 import sys
@@ -22,7 +22,7 @@ import switch_case
 import math
 
 if RUNNINGONRPI:
-    from adxl345.adxl345 import ADXL345
+    import adxl345
 
 try:
     import json
@@ -196,7 +196,7 @@ def align(axes):
 #-------------------------------------------------------------------------------
 # command line
 
-default_layout = "openpixelcontrol/layouts/fadecandy8x8x2.json"
+default_layout = "/layouts/fadecandy8x8x2.json"
 default_server = "localhost:7890"
 #default_server = "192.168.0.118:7890"
 #default_server = "127.0.0.1:7890"
@@ -271,7 +271,7 @@ else:
 # initialize accelerometer
 if RUNNINGONRPI:
     # uncomment this when running on the RPI - can't use smbus
-    # accelerometer = adxl345.ADXL345()
+    accelerometer = adxl345.ADXL345()
     print
 
 #-------------------------------------------------------------------------------
@@ -423,12 +423,12 @@ def clamp(minimum, x, maximum):
 def sample_accel():
     accel_axes = [0,0,0]
     if RUNNINGONRPI:
-        # axes = accelerometer.getAxes(True)
-        # print "ADXL345 on address 0x%x:" % (accelerometer.address)
-        # print "   x = %.3fG" % ( axes['x'] )
-        # print "   y = %.3fG" % ( axes['y'] )
-        # print "   z = %.3fG" % ( axes['z'] )
-        # accel_axes = tuple(axes['x'], axes['y'], axes['z'])
+        axes = accelerometer.getAxes(True)
+        print "ADXL345 on address 0x%x:" % (accelerometer.address)
+        print "   x = %.3fG" % ( axes['x'] )
+        print "   y = %.3fG" % ( axes['y'] )
+        print "   z = %.3fG" % ( axes['z'] )
+        accel_axes = tuple(axes['x'], axes['y'], axes['z'])
         print
     else:
         accel_axes = sample_accel_FAKE(accel_axes )
