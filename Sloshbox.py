@@ -54,6 +54,17 @@ wobble_speed = 0.1
 updateSpeed_min = 0.1
 updateSpeed_max = 1
 
+# threshold from flat at which roll/pitch changes are ignored (i.e. rest state)
+roll_threshold = math.pi / 12
+pitch_threshold = math.pi / 12
+
+# last angle at which we generated a wave
+lastRollWave = 0
+lastPitchWave = 0
+
+# increment by which angle must change from previous amount to generate a new wave (in radians)
+waveAngleIncrement = 0.17
+
 class Wave(object):
     """
     Define a wave
@@ -200,18 +211,21 @@ def align(axes):
     print "MaxMagnitude", MaxMagnitude
 
     # now calculate which wave type this should be.
-    radRoll = Roll
-    radPitch = Pitch
+    if not (-roll_threshold < Roll < roll_threshold):
+        if ((Roll > (lastRollWave + waveAngleIncrement)) or (Roll < (lastRollWave - waveAngleIncrement))):
+            lastRollWave = Roll
+            if (0 < Roll < math.pi):
+                retWaves.append(Wave("TTB", Magnitude / MaxMagnitude))
+            elif (-math.pi < Roll < 0):
+                retWaves.append(Wave("BTT", Magnitude / MaxMagnitude))
 
-    if (0 < radRoll < math.pi):
-        retWaves.append(Wave("TTB", Magnitude / MaxMagnitude))
-    elif (-math.pi < radRoll < 0):
-        retWaves.append(Wave("BTT", Magnitude / MaxMagnitude))
-
-    if (0 < radPitch < math.pi):
-        retWaves.append(Wave("RTL", Magnitude / MaxMagnitude))
-    elif (-math.pi < radPitch < 0):
-        retWaves.append(Wave("LTR", Magnitude / MaxMagnitude))
+        if ((Pitch > (lastPitchWave + waveAngleIncrement)) or (Pitch < (lastPitchWave - waveAngleIncrement))):
+            lastPitchWave = Pitch
+    if not (-pitch_threshold < Pitch < pitch_threshold):
+        if (0 < Pitch < math.pi):
+            retWaves.append(Wave("RTL", Magnitude / MaxMagnitude))
+        elif (-math.pi < Pitch < 0):
+            retWaves.append(Wave("LTR", Magnitude / MaxMagnitude))
 
     return retWaves
 
