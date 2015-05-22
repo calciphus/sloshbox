@@ -55,15 +55,11 @@ updateSpeed_min = 0.1
 updateSpeed_max = 1
 
 # threshold from flat at which roll/pitch changes are ignored (i.e. rest state)
-roll_threshold = math.pi / 36
-pitch_threshold = math.pi / 36
-
-# last angle at which we generated a wave
-lastRollWave = 0
-lastPitchWave = 0
+roll_threshold = 0.001
+pitch_threshold = 0.001
 
 # increment by which angle must change from previous amount to generate a new wave (in radians)
-waveAngleIncrement = 0.01
+waveAngleIncrement = 0.0015
 
 class Wave(object):
     """
@@ -228,7 +224,7 @@ def align(axes, rollWave, pitchWave):
             elif (-math.pi <= Pitch <= 0):
                 retWaves.append(Wave("LTR", Magnitude / MaxMagnitude))
 
-    return retWaves
+    return [retWaves, rollWave, pitchWave]
 
 #-------------------------------------------------------------------------------
 # command line
@@ -566,6 +562,10 @@ waveList =[Wave()]
 accel_axes = sample_accel_FAKE({"x": 0, "y": 0, "z": 0})
 
 while True:
+    # last angle at which we generated a wave
+    lastRollWave = 0
+    lastPitchWave = 0
+
     # update time since loop began
     t = time.time() - start_time
 
@@ -578,9 +578,13 @@ while True:
             print
         else:
             accel_axes = sample_accel_FAKE(accel_axes)
-
+        stuff = []
         new_Waves = []
-        new_Waves = align(accel_axes,lastRollWave, lastPitchWave)
+        stuff = align(accel_axes, lastRollWave, lastPitchWave)
+        new_Waves = stuff[0]
+        lastRollWave = stuff[1]
+        lastPitchWave = stuff[2]
+        # ugly hack but it should work! :)
 
         for newWave in new_Waves:
             waveIndex += 1
