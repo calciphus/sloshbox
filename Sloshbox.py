@@ -223,8 +223,9 @@ def align(axes, rollWave, pitchWave):
                 retWaves.append(Wave("RTL", Magnitude / MaxMagnitude))
             elif (-math.pi <= Pitch <= 0):
                 retWaves.append(Wave("LTR", Magnitude / MaxMagnitude))
-
-    return [retWaves, rollWave, pitchWave]
+    stuffarray = [retWaves, rollWave, pitchWave]
+    print "Stuff:", stuffarray
+    return stuffarray
 
 #-------------------------------------------------------------------------------
 # command line
@@ -561,10 +562,11 @@ LastWaveCreatedAt = start_time
 waveList =[Wave()]
 accel_axes = sample_accel_FAKE({"x": 0, "y": 0, "z": 0})
 
+# last angle at which we generated a wave
+lastPitchWave = 0
+lastRollWave = 0
+
 while True:
-    # last angle at which we generated a wave
-    lastRollWave = 0
-    lastPitchWave = 0
 
     # update time since loop began
     t = time.time() - start_time
@@ -581,6 +583,7 @@ while True:
         stuff = []
         new_Waves = []
         stuff = align(accel_axes, lastRollWave, lastPitchWave)
+        print "RECV Stuff:", stuff
         new_Waves = stuff[0]
         lastRollWave = stuff[1]
         lastPitchWave = stuff[2]
