@@ -513,7 +513,7 @@ def sample_accel():
         print "   x = %.3fG" % ( axes['x'] )
         print "   y = %.3fG" % ( axes['y'] )
         print "   z = %.3fG" % ( axes['z'] )
-        accel_axes = {axes['x'], axes['y'], axes['z']}
+        accel_axes = {"x": axes['x'],"y": axes['y'],"z": axes['z']}
         print
     else:
         accel_axes = sample_accel_FAKE(accel_axes )
