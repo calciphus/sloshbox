@@ -196,7 +196,7 @@ def align(axes):
 #-------------------------------------------------------------------------------
 # command line
 
-default_layout = "/layouts/fadecandy8x8x2.json"
+default_layout = "layouts/fadecandy8x8x2.json"
 default_server = "localhost:7890"
 #default_server = "192.168.0.118:7890"
 #default_server = "127.0.0.1:7890"

@@ -1155,8 +1155,8 @@
       <file leaf-file-name="Sloshbox.py" pinned="false" current="true" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/Sloshbox.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="-15.681922" vertical-offset="7168" max-vertical-offset="7605">
-              <caret line="21" column="11" selection-start-line="21" selection-start-column="11" selection-end-line="21" selection-end-column="11" />
+            <state vertical-scroll-proportion="0.36613274" vertical-offset="2825" max-vertical-offset="7605">
+              <caret line="199" column="33" selection-start-line="199" selection-start-column="33" selection-end-line="199" selection-end-column="33" />
               <folding />
             </state>
           </provider>
@@ -1821,8 +1821,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/Sloshbox.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="-15.681922" vertical-offset="7168" max-vertical-offset="7605">
-          <caret line="21" column="11" selection-start-line="21" selection-start-column="11" selection-end-line="21" selection-end-column="11" />
+        <state vertical-scroll-proportion="0.36613274" vertical-offset="2825" max-vertical-offset="7605">
+          <caret line="199" column="33" selection-start-line="199" selection-start-column="33" selection-end-line="199" selection-end-column="33" />
           <folding />
         </state>
       </provider>
